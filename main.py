@@ -12,9 +12,16 @@ aux1 = X_design.transpose()@X_design
 aux2 = X_design.transpose()@Ytrain
 beta = np.linalg.inv(aux1)@aux2
 
-output = beta[0] + Xtest@beta[1:]
+print(beta)
 
-# SSE(beta) = ||y-^y||^2
-error_SSE = (np.linalg.norm(output-Xtest@beta[1:]))**2
+output = beta[0] + Xtrain@beta[1:]
 
-print(error_SSE)
+# SSE(beta) = ||y-X*beta||^2
+error_SSE = (np.linalg.norm(Ytrain-X_design@beta))**2
+print("SSE ", error_SSE)
+avg_y = np.mean(Ytrain)
+SStot_aux = (Ytrain - avg_y) ** 2
+SStot = np.sum(SStot_aux)
+print("SStot ", SStot)
+r_squared = 1 - (error_SSE / SStot)
+print("r^2 ", r_squared)
