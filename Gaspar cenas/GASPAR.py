@@ -31,10 +31,10 @@ def display(models, SSE, r2):
 
 
 def main():
-    x_train = np.load('X_train_regression1.npy')
-    y_train = np.load('y_train_regression1.npy')
-    x_test = np.load('X_test_regression1.npy')
-
+    x_train = np.load('../X_train_regression1.npy')
+    y_train = np.load('../y_train_regression1.npy')
+    x_test = np.load('../X_test_regression1.npy')
+    print("Bananinhas das boas")
     N = x_train.shape[0]
     k = 17
     models = np.array(['LinearRegression', 'LassoCV', 'RidgeCV', 'ElasticNetCV', 'LassoLarsCV', 'LassoLarsIC'])
