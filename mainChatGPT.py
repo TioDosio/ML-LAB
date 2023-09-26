@@ -17,30 +17,23 @@ def main():
     # Flatten the target matrix if necessary
     Y_train = Y_train.flatten()
 
-    # Define Lasso model with cross-validation
-    lasso_model = LassoCV(cv=5, max_iter=10000)
-    lasso_model.fit(X_train_scaled, Y_train)
-    baseline_predictions = lasso_model.predict(X_train_scaled)
-    baseline_sse = np.sum((baseline_predictions - Y_train) ** 2)
+    def function(X_trainF, Y_trainF):
+        lasso_model = LassoCV(cv=2, max_iter=10000)
+        lasso_model.fit(X_trainF, Y_trainF)
+        prediction = lasso_model.predict(X_trainF)
+        return np.sum((prediction - Y_train) ** 2), prediction
 
-    best_feature_idx = None
+    baseline_SSE, baseline_predictions = function(X_train_scaled, Y_train)
+    best_feature_idx = None  # The index of the feature to remove
     best_r2 = -float('inf')
 
     for feature_idx in range(X_train_scaled.shape[1]):
         # Create a modified dataset with the current feature removed
         modified_data = np.delete(X_train_scaled, feature_idx, axis=1)
+        modified_sse, modified_predictions = function(modified_data, Y_train)
+        r2 = r2_score(Y_train, modified_predictions)  # Calculate R-squared for the best model
 
-        # Train a Lasso model on the modified dataset with cross-validation
-        lasso_model = LassoCV(cv=12)  # You can adjust cv as needed
-        lasso_model.fit(modified_data, Y_train)
-        modified_predictions = lasso_model.predict(modified_data)
-        modified_sse = np.sum((modified_predictions - Y_train) ** 2)
-
-        # Calculate R-squared for the best model
-        r2 = r2_score(Y_train, modified_predictions)
-
-        # Compare SSE with Lasso baseline
-        if modified_sse < baseline_sse:
+        if modified_sse < baseline_SSE:  # Compare SSE with Lasso baseline
             print(f"Removing feature {feature_idx} improved SSE: {modified_sse}")
             if r2 > best_r2:
                 best_r2 = r2
