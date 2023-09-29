@@ -109,6 +109,37 @@ def linear_model(X_train, Y_train, X_test, Y_test):
     Ytest_predicted = beta[0] + X_test@beta[1:]
     return calculate_SSE(Y_test, Ytest_predicted)
 
+def feature_removal_test(X_train, baseline_SSE):
+    """
+    Checks which feature worsens the most the SSE and removes it.
+    :X_train: X train values
+    :baseline_SSE: the SSE baseline value without removing features
+
+    :return: modified X-train array, without the worse feature
+    """ 
+    best_feature_idx=-1
+    for feature_idx in range(X_train.shape[1]):
+        # Create a modified Xtrain dataset with the current feature removed
+        modified_data = np.delete(X_train, feature_idx, axis=1)
+        #modified_sse, modified_predictions = lasso_fn(modified_data, Y_train)
+        modified_sse, modified_predictions = ridge_fn(modified_data, Y_train)
+
+        if modified_sse < baseline_SSE:  # Compare SSE with baseline
+            #print(f"Removing feature {feature_idx} improved SSE: {modified_sse}")
+            baseline_SSE = modified_sse
+            best_feature_idx = feature_idx
+        else:
+            z=0 # precisava de por qualquer coisa para nao dar identation error quando comento o print
+            #print(f"Removing feature {feature_idx} worsened SSE: {modified_sse}")
+
+    if best_feature_idx is not None:
+        print(f"Best feature to remove: {best_feature_idx} ")
+    else:
+        print("No improvement found.")
+
+    return np.delete(X_train, best_feature_idx, axis=1)
+
+
 def plot_alpha_SSE():
     """
     Plots the SSE results using a range of different alpha parameters for Lasso and Ridge regression, without feature removal
@@ -125,6 +156,7 @@ def plot_alpha_SSE():
     sse_ridge_test=[]
     sse_lasso_test=[]
     linear_SSE = []
+    modified_sse_ridge = []
 
     # cross validation without feature removal
     for trainID, testID in kf.split(X_train):
@@ -138,6 +170,37 @@ def plot_alpha_SSE():
         ridge_model_test.fit(Xtrain_fold, Ytrain_fold)
         ridge_model_test_predict = ridge_model_test.predict(Xtest_fold)
         sse_ridge_test.append(calculate_SSE(Ytest_fold, ridge_model_test_predict))
+
+        #feature_removal_test(Xtrain_fold, calculate_SSE(Ytest_fold, ridge_model_test_predict))
+        best_feature_idx=-1
+        for feature_idx in range(Xtrain_fold.shape[1]):
+            # Create a modified Xtrain dataset with the current feature removed
+            modified_data = np.delete(Xtrain_fold, feature_idx, axis=1)
+            modified_testdata = np.delete(Xtest_fold, feature_idx, axis=1)
+
+            #modified_sse, modified_predictions = lasso_fn(modified_data, Y_train)
+            baseline_SSE = calculate_SSE(Ytest_fold, ridge_model_test_predict)
+            ridge_model_test.fit(modified_data, Ytrain_fold)
+            ridge_model_test_predict_modified = ridge_model_test.predict(modified_testdata)
+            modified_sse = calculate_SSE(Ytest_fold, ridge_model_test_predict_modified)
+            if modified_sse < baseline_SSE:  # Compare SSE with baseline
+                #print(f"Removing feature {feature_idx} improved SSE: {modified_sse}")
+                baseline_SSE = modified_sse
+                best_feature_idx = feature_idx
+            else:
+                z=0 # precisava de por qualquer coisa para nao dar identation error quando comento o print
+                #print(f"Removing feature {feature_idx} worsened SSE: {modified_sse}")
+
+        if best_feature_idx is not None:
+            print(f"Best feature to remove: {best_feature_idx} ")
+        else:
+            print("No improvement found.")
+
+        Xtrain_removed = np.delete(Xtrain_fold, best_feature_idx, axis=1)
+        Xtest_removed = np.delete(Xtest_fold, best_feature_idx, axis=1)
+        ridge_model_test.fit(Xtrain_removed, Ytrain_fold)
+        ridge_model_test_predict_removed = ridge_model_test.predict(Xtest_removed)
+        modified_sse_ridge.append(calculate_SSE(Ytest_fold, ridge_model_test_predict_removed))
 
         lasso_model_test = Lasso(alpha=0.1)
         lasso_model_test.fit(Xtrain_fold, Ytrain_fold)
@@ -160,7 +223,7 @@ def plot_alpha_SSE():
 
     print(f"[Ridge] SSE mean of folds = {np.mean(sse_ridge_test):.3f}")
     print(f"[Lasso] SSE mean of folds = {np.mean(sse_lasso_test):.3f}")
-
+    print(f"[Ridge] SSE mean of folds FEATURE REMOVAL = {np.mean(modified_sse_ridge):.3f}")
     print(f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
 
     ridge_SSE_plot = np.array(ridge_SSE_alphas)/fold_num
