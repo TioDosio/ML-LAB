@@ -9,12 +9,15 @@ global X_train
 global Y_train
 global X_test
 global ridge_parameter
+global lasso_parameter
+
 
 X_train = np.load('X_train_regression1.npy')
 Y_train = np.load('y_train_regression1.npy')
 X_test = np.load('X_test_regression1.npy')
 fold_num = 7  # number of splits for cross-validation
 ridge_parameter = 2.7
+lasso_parameter = 0.1
 
 
 def main():
@@ -43,7 +46,7 @@ def main():
         Ytest_fold = Y_train[testID]
 
         # LASSO AND RIDGE WITH BEST ALPHA COEFFICIENT
-        lasso_model_test = Lasso(alpha=0.1)
+        lasso_model_test = Lasso(alpha=lasso_parameter)
         lasso_model_test.fit(Xtrain_fold, Ytrain_fold)
         lasso_model_test_predict = lasso_model_test.predict(Xtest_fold)
         sse_lasso_test.append(calculate_SSE(
@@ -62,7 +65,6 @@ def main():
             modified_data = np.delete(Xtrain_fold, feature_idx, axis=1)
             modified_testdata = np.delete(Xtest_fold, feature_idx, axis=1)
 
-            #modified_sse, modified_predictions = lasso_fn(modified_data, Y_train)
             baseline_SSE = calculate_SSE(Ytest_fold, ridge_model_test_predict)
             ridge_model_test_fm = Ridge(alpha=ridge_parameter)
             ridge_model_test_fm.fit(modified_data, Ytrain_fold)
@@ -74,9 +76,6 @@ def main():
                 #print(f"Removing feature {feature_idx} improved SSE: {modified_sse}")
                 baseline_SSE = modified_sse
                 best_feature_idx = feature_idx
-            else:
-                z = 0  # precisava de por qualquer coisa para nao dar identation error quando comento o print
-                #print(f"Removing feature {feature_idx} worsened SSE: {modified_sse}")
 
         if best_feature_idx is not None:
             print(f"Best feature to remove: {best_feature_idx} ")
@@ -113,10 +112,9 @@ def main():
 
     print(f"[Ridge] SSE mean of folds = {np.mean(sse_ridge_test):.3f}")
     print(f"[Lasso] SSE mean of folds = {np.mean(sse_lasso_test):.3f}")
-    print(f"feature com mais ocurrencias = {np.argmax(best_features)}")
 
     print(
-        f"[Ridge] SSE mean of folds FEATURE REMOVAL = {np.mean(modified_sse_ridge):.3f}")
+        f"[Ridge] SSE mean of folds removing feature{np.argmax(best_features)} = {np.mean(modified_sse_ridge):.3f}")
     print(
         f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
     feature = np.argmax(best_features)
@@ -140,9 +138,6 @@ def save_files(feature, X_train, Y_train, X_test):
     ridge_final_fr.fit(X_train, Y_train)
     ridge_final_predict_fr = ridge_final_fr.predict(X_test)
     np.save('ridge-output-fr', ridge_final_predict_fr)
-    alfabeto = np.load('y_alpha.npy')
-    mse = np.mean((ridge_final_predict - alfabeto) ** 2)
-    print("MSE BETWEEN TWO FINAL OUTPUT = ", mse)
 
 
 def calculate_SSE(y, y_predicted):
@@ -176,6 +171,8 @@ def linear_model(X_train, Y_train, X_test, Y_test):
 
 
 def plots(alphas, ridge_SSE_alphas, lasso_SSE_alphas):
+    """function that plots the relation between the alphas and SSE for both Ridge and Lasso models
+    """
     ridge_SSE_plot = np.array(ridge_SSE_alphas)/fold_num
     lasso_SSE_plot = np.array(lasso_SSE_alphas)/fold_num
     plt.plot(alphas, ridge_SSE_plot, color='red', label="Ridge regression")
