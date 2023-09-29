@@ -5,10 +5,14 @@ import warnings
 from sklearn.model_selection import KFold
 
 # Load the data from .npy files
+global X_train
+global Y_train
+global X_test 
+
 X_train = np.load('X_train_regression1.npy')
 Y_train = np.load('y_train_regression1.npy')
 X_test = np.load('X_test_regression1.npy')
-fold_num = 9 # number of splits for cross-validation
+fold_num = 5 # number of splits for cross-validation
 
 def main():
     warnings.filterwarnings("ignore")
@@ -106,10 +110,30 @@ def main():
 
     print(f"[Ridge] SSE mean of folds FEATURE REMOVAL = {np.mean(modified_sse_ridge):.3f}")
     print(f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
+    feature = np.argmax(best_features)
+    save_files(feature, X_train, Y_train, X_test)
 
     plots(alphas, ridge_SSE_alphas, lasso_SSE_alphas)    
 
-    
+def save_files(feature, X_train, Y_train, X_test):
+    # normal ridge progression using alpha = 2.4
+    ridge_final = Ridge(alpha=2.4)
+    ridge_final.fit(X_train, Y_train)
+    ridge_final_predict = ridge_final.predict(X_test)
+    np.save('ridge-output', ridge_final_predict)
+
+    # removing feature:
+    X_train = np.delete(X_train, feature, axis=1)
+    X_test = np.delete(X_test, feature, axis=1)
+
+    ridge_final_fr = Ridge(alpha=2.4)
+    ridge_final_fr.fit(X_train, Y_train)
+    ridge_final_predict_fr = ridge_final_fr.predict(X_test)
+    np.save('ridge-output-fr', ridge_final_predict_fr)
+
+    mse = np.mean((ridge_final_predict - ridge_final_predict_fr) ** 2)
+    print("MSE BETWEEN TWO FINAL OUTPUT = ", mse)
+
 def calculate_SSE(y, y_predicted):
     """
     Calculates the Sum of Squared Errors (SSE)
