@@ -8,21 +8,21 @@ from sklearn.model_selection import KFold
 X_train = np.load('X_train_regression1.npy')
 Y_train = np.load('y_train_regression1.npy')
 X_test = np.load('X_test_regression1.npy')
-fold_num = 5 # number of splits for cross-validation
+fold_num = 15 # number of splits for cross-validation
 
 def main():
     warnings.filterwarnings("ignore")
 
     baseline_SSE_lasso, baseline_predictions_lasso = lasso_fn(X_train, Y_train)
     baseline_SSE_ridge, baseline_predictions_ridge = ridge_fn(X_train, Y_train)
-
+    print("aijsbdaljbdashbdaslbdh = ", X_train.shape)
     print(f"Before RIDGE feature removal, SSE={baseline_SSE_ridge:.2f}")
-    
+
     Xtrain_better = feature_removal(X_train, baseline_SSE_ridge)
     baseline_SSE_ridge_after, baseline_predictions_RIDGE_after = ridge_fn(Xtrain_better, Y_train)
     print(f"After RIDGE feature removal, SSE = {baseline_SSE_ridge_after:.2f}")
     print(f"SSE decreased {((baseline_SSE_ridge-baseline_SSE_ridge_after)/baseline_SSE_ridge)*100:.2f} %")
-
+    print("oi",X_train.shape)
     plot_alpha_SSE()     # check alpha/SSE evolution with pyplot
 
     
@@ -70,6 +70,7 @@ def feature_removal(X_train, baseline_SSE):
 
     :return: modified X-train array, without the worse feature
     """ 
+    print(f"SSE before = {baseline_SSE}")
     best_feature_idx=-1
     for feature_idx in range(X_train.shape[1]):
         # Create a modified Xtrain dataset with the current feature removed
@@ -94,7 +95,7 @@ def feature_removal(X_train, baseline_SSE):
 
 
 def linear_model(X_train, Y_train, X_test, Y_test):
-    """
+    """ridge_model_predict
     Simple linear model for comparison purposes
     :X_train: X train values
     :Y_train: Y train values
@@ -116,50 +117,58 @@ def plot_alpha_SSE():
     Plots the SSE results using a range of different alpha parameters for Lasso and Ridge regression, without feature removal
     """ 
     kf = KFold(n_splits=fold_num)
-    ridge_SSE_alphas=[]
-    lasso_SSE_alphas=[]
     linear_SSE=[]
     alphas = np.arange(0.1,5,0.1) # range of alphas to analyse
-    ridge_SSE_plot=[0]*len(alphas)
+    ridge_SSE_plot=[0]*(len(alphas))
     lasso_SSE_plot=[0]*len(alphas)
+    ridge_SSE_alphas=[0]*(len(alphas))
+    lasso_SSE_alphas=[0]*(len(alphas))
 
+
+    sse_test=[]
+    linear_SSE = []
 
     # cross validation without feature removal
     for trainID, testID in kf.split(X_train):
+        aux_alphas = 0
         Xtrain_fold = X_train[trainID]
         Ytrain_fold = Y_train[trainID]
         Xtest_fold = X_train[testID]
         Ytest_fold = Y_train[testID]
         
-        linear_SSE = linear_model(Xtrain_fold, Ytrain_fold, Xtest_fold, Ytest_fold)
+        ridge_model_test = Ridge(alpha=2.4)
+        ridge_model_test.fit(Xtrain_fold, Ytrain_fold)
+        ridge_model_test_predict = ridge_model_test.predict(Xtest_fold)
+        sse_test.append(calculate_SSE(Ytest_fold, ridge_model_test_predict))
 
+        linear_SSE.append(linear_model(Xtrain_fold, Ytrain_fold, Xtest_fold, Ytest_fold))
+        
         for a in alphas:
             ridge_model = Ridge(alpha=a)
             ridge_model.fit(Xtrain_fold, Ytrain_fold)
             ridge_model_predict = ridge_model.predict(Xtest_fold)
-            ridge_SSE_alphas.append(calculate_SSE(Ytest_fold, ridge_model_predict))
+            ridge_SSE_alphas[aux_alphas]+=(calculate_SSE(Ytest_fold, ridge_model_predict))
 
             lasso_model = Lasso(alpha=a)
             lasso_model.fit(Xtrain_fold, Ytrain_fold)
             lasso_model_predict = lasso_model.predict(Xtest_fold)
-            lasso_SSE_alphas.append(calculate_SSE(Ytest_fold, lasso_model_predict))
-    
+            lasso_SSE_alphas[aux_alphas]+=(calculate_SSE(Ytest_fold, lasso_model_predict))
+            aux_alphas+=1
+
+    print("MEDIA DE TODOS OS FOLDS = ",np.mean(sse_test))
     print(f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
 
-    for i in range(0,fold_num):
-        for l in range(0,len(alphas)):
-            ridge_SSE_plot[l] += ridge_SSE_alphas[l+len(alphas)*i]
-            lasso_SSE_plot[l] += lasso_SSE_alphas[l+len(alphas)*i]
+    ridge_SSE_plot = np.array(ridge_SSE_alphas)/fold_num
+    lasso_SSE_plot = np.array(lasso_SSE_alphas)/fold_num
+    plt.plot(alphas, ridge_SSE_plot, color='red', label="Ridge regression")
+    plt.plot(alphas, lasso_SSE_plot, color='blue', label="Lasso regression")
+
+    min_y_ridge = min(ridge_SSE_plot)
+    min_x_ridge = alphas[np.argmin(ridge_SSE_plot)]
 
 
-    plt.plot(alphas, np.array(ridge_SSE_plot)/len(alphas), color='red', label="Ridge regression")
-    plt.plot(alphas, np.array(lasso_SSE_plot)/len(alphas), color='blue', label="Lasso regression")
-
-    min_y_ridge = min(np.array(ridge_SSE_plot)/len(alphas))
-    min_x_ridge = alphas[np.argmin(np.array(ridge_SSE_plot)/len(alphas))]
-
-    min_y_lasso = min(np.array(lasso_SSE_plot)/len(alphas))
-    min_x_lasso = alphas[np.argmin(np.array(lasso_SSE_plot)/len(alphas))]
+    min_y_lasso = min(lasso_SSE_plot)
+    min_x_lasso = alphas[np.argmin(lasso_SSE_plot)]
 
     plt.scatter(min_x_ridge, min_y_ridge, color='red', label=f'Minimum (Alpha={min_x_ridge:.2f}, SSE={min_y_ridge:.2f})', zorder=5)
     plt.scatter(min_x_lasso, min_y_lasso, color='blue', label=f'Minimum (Alpha={min_x_lasso:.2f}, SSE={min_y_lasso:.2f})', zorder=5)
