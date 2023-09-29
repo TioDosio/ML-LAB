@@ -15,14 +15,12 @@ def main():
 
     baseline_SSE_lasso, baseline_predictions_lasso = lasso_fn(X_train, Y_train)
     baseline_SSE_ridge, baseline_predictions_ridge = ridge_fn(X_train, Y_train)
-    print("aijsbdaljbdashbdaslbdh = ", X_train.shape)
     print(f"Before RIDGE feature removal, SSE={baseline_SSE_ridge:.2f}")
 
     Xtrain_better = feature_removal(X_train, baseline_SSE_ridge)
     baseline_SSE_ridge_after, baseline_predictions_RIDGE_after = ridge_fn(Xtrain_better, Y_train)
     print(f"After RIDGE feature removal, SSE = {baseline_SSE_ridge_after:.2f}")
     print(f"SSE decreased {((baseline_SSE_ridge-baseline_SSE_ridge_after)/baseline_SSE_ridge)*100:.2f} %")
-    print("oi",X_train.shape)
     plot_alpha_SSE()     # check alpha/SSE evolution with pyplot
 
     
@@ -70,7 +68,6 @@ def feature_removal(X_train, baseline_SSE):
 
     :return: modified X-train array, without the worse feature
     """ 
-    print(f"SSE before = {baseline_SSE}")
     best_feature_idx=-1
     for feature_idx in range(X_train.shape[1]):
         # Create a modified Xtrain dataset with the current feature removed
@@ -125,7 +122,8 @@ def plot_alpha_SSE():
     lasso_SSE_alphas=[0]*(len(alphas))
 
 
-    sse_test=[]
+    sse_ridge_test=[]
+    sse_lasso_test=[]
     linear_SSE = []
 
     # cross validation without feature removal
@@ -139,7 +137,12 @@ def plot_alpha_SSE():
         ridge_model_test = Ridge(alpha=2.4)
         ridge_model_test.fit(Xtrain_fold, Ytrain_fold)
         ridge_model_test_predict = ridge_model_test.predict(Xtest_fold)
-        sse_test.append(calculate_SSE(Ytest_fold, ridge_model_test_predict))
+        sse_ridge_test.append(calculate_SSE(Ytest_fold, ridge_model_test_predict))
+
+        lasso_model_test = Lasso(alpha=0.1)
+        lasso_model_test.fit(Xtrain_fold, Ytrain_fold)
+        lasso_model_test_predict = lasso_model_test.predict(Xtest_fold)
+        sse_lasso_test.append(calculate_SSE(Ytest_fold, lasso_model_test_predict))
 
         linear_SSE.append(linear_model(Xtrain_fold, Ytrain_fold, Xtest_fold, Ytest_fold))
         
@@ -155,7 +158,9 @@ def plot_alpha_SSE():
             lasso_SSE_alphas[aux_alphas]+=(calculate_SSE(Ytest_fold, lasso_model_predict))
             aux_alphas+=1
 
-    print("MEDIA DE TODOS OS FOLDS = ",np.mean(sse_test))
+    print(f"[Ridge] SSE mean of folds = {np.mean(sse_ridge_test):.3f}")
+    print(f"[Lasso] SSE mean of folds = {np.mean(sse_lasso_test):.3f}")
+
     print(f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
 
     ridge_SSE_plot = np.array(ridge_SSE_alphas)/fold_num
