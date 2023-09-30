@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.linear_model import LassoCV, RidgeCV, Ridge, Lasso
+from sklearn.linear_model import Ridge, Lasso
 import matplotlib.pyplot as plt
 import warnings
 from sklearn.model_selection import KFold
@@ -15,7 +15,7 @@ global lasso_parameter
 X_train = np.load('X_train_regression1.npy')
 Y_train = np.load('y_train_regression1.npy')
 X_test = np.load('X_test_regression1.npy')
-fold_num = 7  # number of splits for cross-validation
+fold_num = 9  # number of splits for cross-validation
 ridge_parameter = 2.7
 lasso_parameter = 0.1
 
@@ -84,8 +84,8 @@ def main():
             print("No improvement found.")
 
         # remove features and re-train the model
-        Xtrain_removed = np.delete(Xtrain_fold, 8, axis=1)
-        Xtest_removed = np.delete(Xtest_fold, 8, axis=1)
+        Xtrain_removed = np.delete(Xtrain_fold, 7, axis=1)
+        Xtest_removed = np.delete(Xtest_fold, 7, axis=1)
         ridge_model_test_fm.fit(Xtrain_removed, Ytrain_fold)
         ridge_model_test_predict_removed = ridge_model_test_fm.predict(
             Xtest_removed)
@@ -114,7 +114,7 @@ def main():
     print(f"[Lasso] SSE mean of folds = {np.mean(sse_lasso_test):.3f}")
 
     print(
-        f"[Ridge] SSE mean of folds removing feature{np.argmax(best_features)} = {np.mean(modified_sse_ridge):.3f}")
+        f"[Ridge] SSE mean of folds removing feature = {np.mean(modified_sse_ridge):.3f}")
     print(
         f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
     feature = np.argmax(best_features)
@@ -131,8 +131,8 @@ def save_files(feature, X_train, Y_train, X_test):
     np.save('ridge-output', ridge_final_predict)
 
     # removing feature:
-    X_train = np.delete(X_train, feature, axis=1)
-    X_test = np.delete(X_test, feature, axis=1)
+    X_train = np.delete(X_train, 7, axis=1)
+    X_test = np.delete(X_test, 7, axis=1)
 
     ridge_final_fr = Ridge(alpha=ridge_parameter)
     ridge_final_fr.fit(X_train, Y_train)
