@@ -1,7 +1,8 @@
 import numpy as np
 from sklearn.linear_model import RANSACRegressor, LinearRegression, LassoCV, RidgeCV, Ridge, Lasso
-from sklearn.model_selection import cross_val_score
-import warnings
+from sklearn.model_selection import cross_val_score, cross_val_predict
+
+# import warnings
 
 # Load the data from .npy files
 global X_train
@@ -15,9 +16,8 @@ def main():
     X_train = np.load('X_train_regression2.npy')
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
-    print(X_test.shape)
     # Ignore all warnings
-    warnings.filterwarnings("ignore")
+    # warnings.filterwarnings("ignore")
 
     # Import the module that triggers the warning
 
@@ -37,26 +37,24 @@ def main():
     outliers_X = X_train[outlier_mask]
     outliers_y = Y_train[outlier_mask]
 
-    print(int(inliers_X.shape[0] * 0.9))
-    # Perform cross-validation
-    linear_scoresIN = cross_val_score(LinearRegression(), inliers_X, inliers_y, cv=int(inliers_X.shape[0] * 0.9))
-    print(f"LINEAR cross-validation scores: {linear_scoresIN}")
-    print(max(linear_scoresIN))
-    linear_scoresOUT = cross_val_score(LinearRegression(), outliers_X, outliers_y, cv=int(outliers_X.shape[0] * 0.9))
-    print(f"LINEAR cross-validation scores: {linear_scoresOUT}")
-    print(max(linear_scoresOUT))
-    """lasso_scores = cross_val_score(LassoCV(), inliers_X, inliers_y, cv=int(inliers_X.shape[0] * 0.9))
-    print(f"LASSO cross-validation scores: {lasso_scores}")
+    LinearRegIN = LinearRegression()
+    LinearRegOUT = LinearRegression()
+    LinearRegIN.fit(inliers_X, inliers_y)
+    LinearRegOUT.fit(outliers_X, outliers_y)
 
-    ridge_scores = cross_val_score(RidgeCV(), inliers_X, inliers_y, cv=int(inliers_X.shape[0] * 0.9))
-    print(f"RIDGE cross-validation scores: {ridge_scores}")"""
-    predictions_IN = ransac.predict(X_train)
-    sse_IN = np.sum((predictions_IN[inlier_mask] - inliers_y) ** 2)
-
-    predictions_OUT = ransac.predict(X_test)
-    sse_OUT = np.sum((predictions_OUT[outliers_X] - outliers_y) ** 2)
-    print(f"SSE for inliers predictions on X_test: {sse_IN}")
-    print(f"SSE for outliers predictions on X_test: {sse_OUT}")
+    In_pred = LinearRegIN.predict(X_train)
+    Out_pred = LinearRegOUT.predict(X_train)
+    sseIn = np.sum((In_pred - Y_train) ** 2, axis=0)
+    sseOut = np.sum((Out_pred - Y_train) ** 2, axis=0)
+    print(f"SSE Inliers: {sseIn}")
+    print(f"SSE Outliers: {sseOut}")
+    Soma = 0
+    for i in range(len(Y_train)):
+        if (In_pred[i]-Y_train[i]) < (Out_pred[i]-Y_train[i]):
+            Soma += In_pred[i]-Y_train[i]
+        else:
+            Soma += Out_pred[i]-Y_train[i]
+    print(f"Soma: {Soma**2}")
 
 
 if __name__ == "__main__":
