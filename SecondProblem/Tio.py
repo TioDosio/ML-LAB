@@ -1,9 +1,9 @@
 import numpy as np
-from sklearn.linear_model import RANSACRegressor, LinearRegression
+from sklearn.linear_model import RANSACRegressor, LinearRegression, Lasso, RidgeCV, Ridge
 
-# import warnings
+import warnings
 
-global best_ransa_parameter
+global best_ransa_parameter, best_sse
 
 
 def main():
@@ -12,10 +12,10 @@ def main():
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
 
-    """warnings.filterwarnings("ignore")"""
-    ransa_parameter = 0.1
+    warnings.filterwarnings("ignore")
+    ransa_parameter = 1
     best_sse = 100000
-    for i in range(0, 2000):
+    for i in range(0, 500):
         print(ransa_parameter)
         sse = ransa(X_train, Y_train, ransa_parameter)
         if sse < best_sse:
@@ -23,7 +23,7 @@ def main():
             best_ransa_parameter = ransa_parameter
         ransa_parameter += 0.001
     print(f"Beste SSE: {best_sse}")
-    print(f"Beste MSE: {best_sse/len(X_train)}")
+    print(f"Beste MSE: {best_sse / len(X_train)}")
     print(f"Best RANSAC parameter: {best_ransa_parameter}")
     print(ransa_parameter)
 
@@ -45,26 +45,75 @@ def ransa(X_train, Y_train, ransac_parameter):
 
     outliers_X = X_train[outlier_mask]
     outliers_y = Y_train[outlier_mask]
+    lin = linear_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
+    las = lasso_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
+    rid = ridge_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
+    if lin < las and lin < rid:
+        print("Linear")
+        return lin
+    elif las < lin and las < rid:
+        print("Lasso")
+        return las
+    else:
+        print("Ridge")
+        return rid
 
-    LinearRegIN = LinearRegression()
-    LinearRegOUT = LinearRegression()
-    LinearRegIN.fit(inliers_X, inliers_y)
-    LinearRegOUT.fit(outliers_X, outliers_y)
-    Banana = []
-    c0 = 0
-    c1 = 0
+
+def linear_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train):
+    modelIN = LinearRegression()
+    modelOUT = LinearRegression()
+
+    modelIN.fit(inliers_X, inliers_y)
+    modelOUT.fit(outliers_X, outliers_y)
+    errors = []
     for i in range(len(X_train)):
-        abs_error_IN = (LinearRegIN.predict([X_train[i]]) - Y_train[i])**2
-        abs_error_OUT = (LinearRegOUT.predict([X_train[i]]) - Y_train[i])**2
+        abs_error_IN = (modelIN.predict([X_train[i]]) - Y_train[i]) ** 2
+        abs_error_OUT = (modelOUT.predict([X_train[i]]) - Y_train[i]) ** 2
 
         if abs_error_IN < abs_error_OUT:
-            Banana.append(abs_error_IN)
-            c0 += 1
+            errors.append(abs_error_IN)
         else:
-            Banana.append(abs_error_OUT)
-            c1 += 1
+            errors.append(abs_error_OUT)
+    print("Linear: ",np.sum(errors))
+    return np.sum(errors)
 
-    return np.sum(Banana)
+
+def lasso_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train):
+    modelIN = Lasso()
+    modelOUT = Lasso()
+
+    modelIN.fit(inliers_X, inliers_y)
+    modelOUT.fit(outliers_X, outliers_y)
+    errors = []
+    for i in range(len(X_train)):
+        abs_error_IN = (modelIN.predict([X_train[i]]) - Y_train[i]) ** 2
+        abs_error_OUT = (modelOUT.predict([X_train[i]]) - Y_train[i]) ** 2
+
+        if abs_error_IN < abs_error_OUT:
+            errors.append(abs_error_IN)
+        else:
+            errors.append(abs_error_OUT)
+    print("Lasso: ",np.sum(errors))
+    return np.sum(errors)
+
+
+def ridge_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train):
+    modelIN = RidgeCV(cv=int(inliers_X.shape[0]*0.9))
+    modelOUT = RidgeCV(cv=int(outliers_X.shape[0]*0.9))
+
+    modelIN.fit(inliers_X, inliers_y)
+    modelOUT.fit(outliers_X, outliers_y)
+    errors = []
+    for i in range(len(X_train)):
+        abs_error_IN = (modelIN.predict([X_train[i]]) - Y_train[i]) ** 2
+        abs_error_OUT = (modelOUT.predict([X_train[i]]) - Y_train[i]) ** 2
+
+        if abs_error_IN < abs_error_OUT:
+            errors.append(abs_error_IN)
+        else:
+            errors.append(abs_error_OUT)
+    print("Ridge: ",np.sum(errors))
+    return np.sum(errors)
 
 
 def counter(mask):
