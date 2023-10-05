@@ -13,9 +13,9 @@ def main():
     X_test = np.load('X_test_regression2.npy')
 
     warnings.filterwarnings("ignore")
-    ransa_parameter = 1
+    ransa_parameter = 1.09
     best_sse = 100000
-    for i in range(0, 500):
+    for i in range(0, 15):
         print(ransa_parameter)
         sse = ransa(X_train, Y_train, ransa_parameter)
         if sse < best_sse:
@@ -42,9 +42,10 @@ def ransa(X_train, Y_train, ransac_parameter):
     print(f"Number of outliers: {counter(outlier_mask)}")"""
     inliers_X = X_train[inlier_mask]
     inliers_y = Y_train[inlier_mask]
-
+    print("Inliers: ", inliers_X.shape[0])
     outliers_X = X_train[outlier_mask]
     outliers_y = Y_train[outlier_mask]
+    print("Outliers: ", outliers_X.shape[0])
     lin = linear_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
     las = lasso_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
     rid = ridge_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
@@ -74,7 +75,7 @@ def linear_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train)
             errors.append(abs_error_IN)
         else:
             errors.append(abs_error_OUT)
-    print("Linear: ",np.sum(errors))
+    print("Linear: ", np.sum(errors))
     return np.sum(errors)
 
 
@@ -93,13 +94,13 @@ def lasso_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train):
             errors.append(abs_error_IN)
         else:
             errors.append(abs_error_OUT)
-    print("Lasso: ",np.sum(errors))
+    print("Lasso: ", np.sum(errors))
     return np.sum(errors)
 
 
 def ridge_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train):
-    modelIN = RidgeCV(cv=int(inliers_X.shape[0]*0.9))
-    modelOUT = RidgeCV(cv=int(outliers_X.shape[0]*0.9))
+    modelIN = RidgeCV(cv=int(inliers_X.shape[0] * 0.9))
+    modelOUT = RidgeCV(cv=int(outliers_X.shape[0] * 0.9))
 
     modelIN.fit(inliers_X, inliers_y)
     modelOUT.fit(outliers_X, outliers_y)
@@ -112,7 +113,7 @@ def ridge_model(inliers_X, inliers_y, outliers_X, outliers_y, X_train, Y_train):
             errors.append(abs_error_IN)
         else:
             errors.append(abs_error_OUT)
-    print("Ridge: ",np.sum(errors))
+    print("Ridge: ", np.sum(errors))
     return np.sum(errors)
 
 
