@@ -34,7 +34,7 @@ def main():
         linear.fit(x, y)
         predictions = linear.predict(X_train)
         distances = np.abs(predictions - Y_train)
-        inlier_count = np.sum(distances < inlier_range)
+        inlier_count = np.sum(distances < inlier_range)  # não fazer isso, fazer com o erro, testar todas as combinações e compará-las com o sse do modelo 1 e 2
         if inlier_count > best_inlier_count:
             outlier_indices = np.where(distances >= inlier_range)[0]
             inlier_indices = np.where(distances < inlier_range)[0]
