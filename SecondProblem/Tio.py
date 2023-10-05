@@ -1,26 +1,36 @@
 import numpy as np
-from sklearn.linear_model import RANSACRegressor, LinearRegression, LassoCV, RidgeCV, Ridge, Lasso
-from sklearn.model_selection import cross_val_score, cross_val_predict
+from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 # import warnings
 
-# Load the data from .npy files
-global X_train
-global Y_train
-global X_test
-global ridge_parameter
-global lasso_parameter
+global best_ransa_parameter
 
 
 def main():
+    global best_ransa_parameter, best_sse
     X_train = np.load('X_train_regression2.npy')
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
 
     """warnings.filterwarnings("ignore")"""
+    ransa_parameter = 0.1
+    best_sse = 100000
+    for i in range(0, 2000):
+        print(ransa_parameter)
+        sse = ransa(X_train, Y_train, ransa_parameter)
+        if sse < best_sse:
+            best_sse = sse
+            best_ransa_parameter = ransa_parameter
+        ransa_parameter += 0.001
+    print(f"Beste SSE: {best_sse}")
+    print(f"Beste MSE: {best_sse/len(X_train)}")
+    print(f"Best RANSAC parameter: {best_ransa_parameter}")
+    print(ransa_parameter)
 
+
+def ransa(X_train, Y_train, ransac_parameter):
     # Create and configure the RANSACRegressor
-    ransac = RANSACRegressor(LinearRegression(), residual_threshold=1.0, random_state=0)
+    ransac = RANSACRegressor(LinearRegression(), residual_threshold=ransac_parameter, random_state=0)
 
     # Fit the RANSAC model to your data
     ransac.fit(X_train, Y_train)
@@ -28,7 +38,8 @@ def main():
     # Get the inliers and outliers
     inlier_mask = ransac.inlier_mask_
     outlier_mask = np.logical_not(inlier_mask)
-
+    """print(f"Number of inliers: {counter(inlier_mask)}")
+    print(f"Number of outliers: {counter(outlier_mask)}")"""
     inliers_X = X_train[inlier_mask]
     inliers_y = Y_train[inlier_mask]
 
@@ -43,8 +54,8 @@ def main():
     c0 = 0
     c1 = 0
     for i in range(len(X_train)):
-        abs_error_IN = np.abs(LinearRegIN.predict([X_train[i]]) - Y_train[i])
-        abs_error_OUT = np.abs(LinearRegOUT.predict([X_train[i]]) - Y_train[i])
+        abs_error_IN = (LinearRegIN.predict([X_train[i]]) - Y_train[i])**2
+        abs_error_OUT = (LinearRegOUT.predict([X_train[i]]) - Y_train[i])**2
 
         if abs_error_IN < abs_error_OUT:
             Banana.append(abs_error_IN)
@@ -53,8 +64,15 @@ def main():
             Banana.append(abs_error_OUT)
             c1 += 1
 
-    print(c0, c1)
-    print(np.mean(Banana))
+    return np.sum(Banana)
+
+
+def counter(mask):
+    Counter = 0
+    for i in range(len(mask)):
+        if mask[i] == 1:
+            Counter += 1
+    return Counter
 
 
 if __name__ == "__main__":
