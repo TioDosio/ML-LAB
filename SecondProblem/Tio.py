@@ -16,10 +16,8 @@ def main():
     X_train = np.load('X_train_regression2.npy')
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
-    # Ignore all warnings
-    # warnings.filterwarnings("ignore")
 
-    # Import the module that triggers the warning
+    """warnings.filterwarnings("ignore")"""
 
     # Create and configure the RANSACRegressor
     ransac = RANSACRegressor(LinearRegression(), residual_threshold=1.0, random_state=0)
@@ -41,20 +39,22 @@ def main():
     LinearRegOUT = LinearRegression()
     LinearRegIN.fit(inliers_X, inliers_y)
     LinearRegOUT.fit(outliers_X, outliers_y)
+    Banana = []
+    c0 = 0
+    c1 = 0
+    for i in range(len(X_train)):
+        abs_error_IN = np.abs(LinearRegIN.predict([X_train[i]]) - Y_train[i])
+        abs_error_OUT = np.abs(LinearRegOUT.predict([X_train[i]]) - Y_train[i])
 
-    In_pred = LinearRegIN.predict(X_train)
-    Out_pred = LinearRegOUT.predict(X_train)
-    sseIn = np.sum((In_pred - Y_train) ** 2, axis=0)
-    sseOut = np.sum((Out_pred - Y_train) ** 2, axis=0)
-    print(f"SSE Inliers: {sseIn}")
-    print(f"SSE Outliers: {sseOut}")
-    Soma = 0
-    for i in range(len(Y_train)):
-        if (In_pred[i]-Y_train[i]) < (Out_pred[i]-Y_train[i]):
-            Soma += In_pred[i]-Y_train[i]
+        if abs_error_IN < abs_error_OUT:
+            Banana.append(abs_error_IN)
+            c0 += 1
         else:
-            Soma += Out_pred[i]-Y_train[i]
-    print(f"Soma: {Soma**2}")
+            Banana.append(abs_error_OUT)
+            c1 += 1
+
+    print(c0, c1)
+    print(np.mean(Banana))
 
 
 if __name__ == "__main__":
