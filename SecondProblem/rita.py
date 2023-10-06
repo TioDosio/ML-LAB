@@ -17,7 +17,7 @@ def main():
     index_list = list(range(len(X_train)))
     random.shuffle(index_list)
     # inlier_range = 0.73
-    inlier_range = np.arange(0.72, 0.725, 0.00001)
+    inlier_range = np.arange(0.721, 0.724, 0.0001)
     best_inlier_count = 0
     inlier_model = None
     combinations = list(itertools.combinations(range(len(X_train)), 2))
@@ -25,7 +25,6 @@ def main():
 
     for i in (inlier_range):
         print(i)
-        f=0
         for combo in combinations:
             # selects two points and fits them to a linear model
             index1, index2 = combo
@@ -45,8 +44,7 @@ def main():
                 inlier_indices = np.where(distances < i)[0]
                 inlier_model = linear
                 best_inlier_count = inlier_count
-            print(f)
-            f = f + 1
+
         outlier_x = X_train[outlier_indices]
         outlier_y = Y_train[outlier_indices]
         inlier_x = X_train[inlier_indices]
@@ -54,18 +52,18 @@ def main():
         outlier_model = LinearRegression()
         outlier_model.fit(outlier_x, outlier_y)
         error = 0
-        aux = 0
-        aux2 = 0
+        aux = []
+        aux2 = []
         for j in range(len(X_train)):
             error_model_1 = (inlier_model.predict([X_train[j]]) - Y_train[j]) ** 2
             error_model_2 = (outlier_model.predict([X_train[j]]) - Y_train[j]) ** 2
 
             if error_model_1 < error_model_2:
                 error += error_model_1
-                aux += 1
+                aux.append(j)
             else:
                 error += error_model_2
-                aux2 += 1
+                aux2.append(j)
 
         if error < sse_baseline:
             sse_baseline = error
@@ -75,7 +73,34 @@ def main():
     print("Pontos model 1", len(inlier_indices))
     print("Pontos model 2", len(outlier_indices))
     print("sse ", sse_baseline)
-    print(f"aux1 {aux}, aux2 {aux2}")
+
+    inlier_model_2 = LinearRegression()
+    outlier_model_2 = LinearRegression()
+    inlier_model_2.fit(X_train[aux], Y_train[aux])
+    outlier_model_2.fit(X_train[aux2], Y_train[aux2])
+    error_modified = 0
+    confused=0
+    what=0
+    sse_baseline = float('inf')
+    for j in range(len(X_train)):
+        error_model_1_modified = (inlier_model_2.predict([X_train[j]]) - Y_train[j]) ** 2
+        error_model_2_modified = (outlier_model_2.predict([X_train[j]]) - Y_train[j]) ** 2
+
+        if error_model_1_modified < error_model_2_modified:
+            error_modified += error_model_1_modified
+            confused+=1
+        else:
+            error_modified += error_model_2_modified
+            what+=1
+
+    if error_modified < sse_baseline:
+        sse_baseline = error_modified
+        best_parameter = i
+
+    print("melhor parametro ", best_parameter)
+    print("Pontos model 1", confused)
+    print("Pontos model 2", what)
+    print("sse ", sse_baseline)
 
     col1 = inlier_model.predict(X_test)
     col2 = outlier_model.predict(X_test)
