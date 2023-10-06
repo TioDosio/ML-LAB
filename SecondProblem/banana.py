@@ -1,20 +1,17 @@
 import numpy as np
 from sklearn.linear_model import LinearRegression
-import random
-import warnings
 import itertools
 from sklearn.model_selection import KFold
 
 
 def main():
     global best_inlier_range
-    warnings.filterwarnings("ignore")
 
     X_train = np.load('X_train_regression2.npy')
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
 
-    inlier_range = np.arange(0.2, 2, 0.1)
+    inlier_range = np.arange(0.7, 1, 0.05)
     best_sse = float('inf')
     combinations = list(itertools.combinations(range(len(X_train)), 2))
 
