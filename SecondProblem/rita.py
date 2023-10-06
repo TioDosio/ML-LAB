@@ -3,9 +3,8 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression, Lasso, Ridge
 import random
 import warnings
 import itertools
-
+import sys 
 from sklearn.model_selection import KFold
-
 
 def main():
     warnings.filterwarnings("ignore")
@@ -16,41 +15,62 @@ def main():
 
     index_list = list(range(len(X_train)))
     random.shuffle(index_list)
-    inlier_range = 0.73  # 0.74
-
+    #inlier_range = 0.73
+    inlier_range = np.arange(0.7,0.8,0.01)
     best_inlier_count = 0
     inlier_model = None
     combinations = list(itertools.combinations(range(len(X_train)), 2))
-    for combo in combinations:
-        # selects two points and fits them to a linear model
-        index1, index2 = combo
-        x1 = X_train[index1]
-        x2 = X_train[index2]
-        y1 = Y_train[index1]
-        y2 = Y_train[index2]
-        x = np.array([x1, x2])
-        y = np.array([y1, y2])
-        linear = LinearRegression()
-        linear.fit(x, y)
-        predictions = linear.predict(X_train)
-        distances = np.abs(predictions - Y_train)
-        inlier_count = np.sum(distances < inlier_range)  # não fazer isso, fazer com o erro, testar todas as combinações e compará-las com o sse do modelo 1 e 2
-        if inlier_count > best_inlier_count:
-            outlier_indices = np.where(distances >= inlier_range)[0]
-            inlier_indices = np.where(distances < inlier_range)[0]
-            inlier_model = linear
-            best_inlier_count = inlier_count
+    sse_baseline = float('inf')
 
+    for i in (inlier_range):
+        for combo in combinations:
+            # selects two points and fits them to a linear model
+            index1, index2 = combo
+            x1 = X_train[index1]
+            x2 = X_train[index2]
+            y1 = Y_train[index1]
+            y2 = Y_train[index2]
+            x = np.array([x1, x2])
+            y = np.array([y1, y2])
+            linear = LinearRegression()
+            linear.fit(x, y)
+            predictions = linear.predict(X_train)
+            distances = np.abs(predictions - Y_train)
+            inlier_count = np.sum(distances < i)  # não fazer isso, fazer com o erro, testar todas as combinações e compará-las com o sse do modelo 1 e 2
+            if inlier_count > best_inlier_count:
+                outlier_indices = np.where(distances >= i)[0]
+                inlier_indices = np.where(distances < i)[0]
+                inlier_model = linear
+                best_inlier_count = inlier_count
 
-    # fit another linear model to the outlier points
-    outlier_x = X_train[outlier_indices]
-    outlier_y = Y_train[outlier_indices]
-    inlier_x = X_train[inlier_indices]
-    inlier_y = Y_train[inlier_indices]
-    outlier_model = LinearRegression()
-    outlier_model.fit(outlier_x, outlier_y)
+        outlier_x = X_train[outlier_indices]
+        outlier_y = Y_train[outlier_indices]
+        inlier_x = X_train[inlier_indices]
+        inlier_y = Y_train[inlier_indices]
+        outlier_model = LinearRegression()
+        outlier_model.fit(outlier_x, outlier_y)
+        sse_geral = 0
+        error=0
+        print("pontos model1 ", len(inlier_indices))
+        print("pontos model2 ", len(outlier_indices))
+        for j in range(len(X_train)):
+            error_model_1 = (inlier_model.predict([X_train[j]]) - Y_train[j]) ** 2
+            error_model_2 = (outlier_model.predict([X_train[j]]) - Y_train[j]) ** 2
 
-    error_model1_out, error_model2_out = cross_validation(outlier_x, outlier_y, inlier_model, outlier_model)
+            if error_model_1 < error_model_2:
+                error += error_model_1
+            else:
+                error += error_model_2
+
+        sse_geral = error / len(X_train)
+        if sse_geral < sse_baseline:
+            print("sse_geral ", sse_geral)
+            print("i ", i)
+            sse_baseline = sse_geral
+            best_parameter = i
+ 
+    print("melhor parametro ",best_parameter)
+    """ error_model1_out, error_model2_out = cross_validation(outlier_x, outlier_y, inlier_model, outlier_model)
     error_model1_in, error_model2_in = cross_validation(inlier_x, inlier_y, inlier_model, outlier_model)
 
     print(f"[Model 1 Inlier] SSE outlier = {error_model1_out}, SSE inlier = {error_model1_in}")
@@ -76,7 +96,7 @@ def main():
     # rint("after error model2", len(model2_idx))
     # see which model is better for Xtest
     model1_predict = inlier_model.predict(X_test)
-    model2_predict = outlier_model.predict(X_test)
+    model2_predict = outlier_model.predict(X_test) """
 
 
 def cross_validation(X_train, Y_train, inlier_model, outlier_model):
