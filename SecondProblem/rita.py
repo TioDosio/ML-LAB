@@ -16,13 +16,14 @@ def main():
     index_list = list(range(len(X_train)))
     random.shuffle(index_list)
     #inlier_range = 0.73
-    inlier_range = np.arange(0.7,0.8,0.01)
+    inlier_range = np.arange(0.72,0.725,0.00001)
     best_inlier_count = 0
     inlier_model = None
     combinations = list(itertools.combinations(range(len(X_train)), 2))
     sse_baseline = float('inf')
 
     for i in (inlier_range):
+        print(i)
         for combo in combinations:
             # selects two points and fits them to a linear model
             index1, index2 = combo
@@ -36,7 +37,7 @@ def main():
             linear.fit(x, y)
             predictions = linear.predict(X_train)
             distances = np.abs(predictions - Y_train)
-            inlier_count = np.sum(distances < i)  # não fazer isso, fazer com o erro, testar todas as combinações e compará-las com o sse do modelo 1 e 2
+            inlier_count = np.sum(distances < i) 
             if inlier_count > best_inlier_count:
                 outlier_indices = np.where(distances >= i)[0]
                 inlier_indices = np.where(distances < i)[0]
@@ -51,73 +52,35 @@ def main():
         outlier_model.fit(outlier_x, outlier_y)
         sse_geral = 0
         error=0
-        print("pontos model1 ", len(inlier_indices))
-        print("pontos model2 ", len(outlier_indices))
+        aux=0
+        aux2=0
         for j in range(len(X_train)):
             error_model_1 = (inlier_model.predict([X_train[j]]) - Y_train[j]) ** 2
             error_model_2 = (outlier_model.predict([X_train[j]]) - Y_train[j]) ** 2
 
             if error_model_1 < error_model_2:
                 error += error_model_1
+                aux+=1
             else:
                 error += error_model_2
+                aux2+=1
 
-        sse_geral = error / len(X_train)
+        sse_geral = error 
         if sse_geral < sse_baseline:
-            print("sse_geral ", sse_geral)
-            print("i ", i)
             sse_baseline = sse_geral
             best_parameter = i
  
     print("melhor parametro ",best_parameter)
-    """ error_model1_out, error_model2_out = cross_validation(outlier_x, outlier_y, inlier_model, outlier_model)
-    error_model1_in, error_model2_in = cross_validation(inlier_x, inlier_y, inlier_model, outlier_model)
-
-    print(f"[Model 1 Inlier] SSE outlier = {error_model1_out}, SSE inlier = {error_model1_in}")
-    print(f"[Model 2 Outlier] SSE outlier = {error_model2_out}, SSE inlier = {error_model2_in}")
-    model1_idx = []
-    model2_idx = []
-    modelpixa = []
-    best_modelpixa = 100000
-    for i in range(len(X_train)):
-        error_model1 = (inlier_model.predict([X_train[i]]) - Y_train[i]) ** 2
-        error_model2 = (outlier_model.predict([X_train[i]]) - Y_train[i]) ** 2
-        if (error_model1 < error_model2):
-            model1_idx.append(i)
-            modelpixa.append(error_model1)
-        else:
-            modelpixa.append(error_model2)
-            model2_idx.append(i)
-    if np.sum(modelpixa) < best_modelpixa:
-        best_modelpixa = np.sum(modelpixa)
-    print(f"sse PIXAAAAAAAAAAA: {np.sum(best_modelpixa)}")
-    print(f"mse PIXAAAAAAAAAAA: {np.sum(best_modelpixa) / len(X_train)}")
-    # print("after error model1", len(model1_idx))
-    # rint("after error model2", len(model2_idx))
-    # see which model is better for Xtest
-    model1_predict = inlier_model.predict(X_test)
-    model2_predict = outlier_model.predict(X_test) """
-
-
-def cross_validation(X_train, Y_train, inlier_model, outlier_model):
-    error_model1 = 0
-    error_model2 = 0
-    kf = KFold(n_splits=int(0.75 * len(X_train)))  # usar 75% dos dados para treinar
-
-    for trainID, testID in kf.split(X_train):
-        Xtrain_fold = X_train[trainID]
-        Ytrain_fold = Y_train[trainID]
-        Xtest_fold = X_train[testID]
-        Ytest_fold = Y_train[testID]
-
-        inlier_model.fit(Xtrain_fold, Ytrain_fold)
-        error_model1 += np.sum((Ytest_fold - (inlier_model.predict(Xtest_fold)))) ** 2
-
-        outlier_model.fit(Xtrain_fold, Ytrain_fold)
-        error_model2 += np.sum((Ytest_fold - (outlier_model.predict(Xtest_fold)))) ** 2
-
-    return error_model1 / int(0.75 * len(X_train)), error_model2 / int(0.75 * len(X_train))
-
-
+    print("Pontos model 1", len(inlier_indices))
+    print("Pontos model 2", len(outlier_indices))
+    print("sse ", sse_baseline)
+    print(f"aux1 {aux}, aux2 {aux2}")
+    
+    col1 = inlier_model.predict(X_test)
+    col2 = outlier_model.predict(X_test)
+    np.save('col1', col1)
+    np.save('col2', col2)
+    np.save('output_rita', np.column_stack((col1, col2)))
+ 
 if __name__ == "__main__":
     main()
