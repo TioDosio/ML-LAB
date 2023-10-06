@@ -1,24 +1,16 @@
 import numpy as np
-from sklearn.linear_model import RANSACRegressor, LinearRegression, Lasso, RidgeCV, Ridge
+from sklearn.linear_model import LinearRegression
 import random
-import warnings
 import itertools
 from sklearn.model_selection import KFold
 
 
 def main():
-    warnings.filterwarnings("ignore")
-
     X_train = np.load('X_train_regression2.npy')
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
 
-    index_list = list(range(len(X_train)))
-    random.shuffle(index_list)
-    # inlier_range = 0.73
-    inlier_range = np.arange(0.2, 1.5, 0.1)
-    best_inlier_count = 0
-    inlier_model = None
+    inlier_range = np.arange(0.2, 2, 0.1)
     combinations = list(itertools.combinations(range(len(X_train)), 2))
     sse_baseline = float('inf')
     b = 0
@@ -54,7 +46,7 @@ def main():
             if f != c:
                 c = f
                 print("print 1: ", f)
-            if len(inliers_x) < 5 or len(outliers_x) < 5:
+            if len(inliers_x) < 30 or len(outliers_x) < 30:
                 continue
             sse_inliers, inlier_model_test = cross_val(inliers_x, inliers_y, inlier_model)
             sse_outliers, outlier_model_test = cross_val(outliers_x, outliers_y, outlier_model)
@@ -84,12 +76,14 @@ def main():
                 best_inlier_model = inlier_model_test
             f += 1
             print("SSER: ", sse_baseline)
+
+
     print(best_parameter)
     print(sse_baseline)
 
 
 def cross_val(X, Y, model):
-    kf = KFold(n_splits=int(0.70 * len(X)), shuffle=True)
+    kf = KFold(n_splits=int(0.70 * len(X)))
     kf.get_n_splits(X)
     sse = 0
     for train_index, test_index in kf.split(X):
