@@ -25,6 +25,7 @@ def main():
 
     for i in (inlier_range):
         print(i)
+        f=0
         for combo in combinations:
             # selects two points and fits them to a linear model
             index1, index2 = combo
@@ -44,7 +45,8 @@ def main():
                 inlier_indices = np.where(distances < i)[0]
                 inlier_model = linear
                 best_inlier_count = inlier_count
-
+            print(f)
+            f = f + 1
         outlier_x = X_train[outlier_indices]
         outlier_y = Y_train[outlier_indices]
         inlier_x = X_train[inlier_indices]
