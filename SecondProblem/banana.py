@@ -5,16 +5,16 @@ from sklearn.model_selection import KFold
 
 
 def main():
-    global best_inlier_range
+    global best_inlier_range, best_model_in, best_model_out
 
     X_train = np.load('X_train_regression2.npy')
     Y_train = np.load('y_train_regression2.npy')
     X_test = np.load('X_test_regression2.npy')
 
-    inlier_range = np.arange(0.7, 1, 0.05)
+    inlier_range = np.arange(0.73, 0.77, 0.01)
     best_sse = float('inf')
     combinations = list(itertools.combinations(range(len(X_train)), 2))
-
+    tamanho = 0
     for i in inlier_range:
         print(i)
         a = 0
@@ -38,7 +38,7 @@ def main():
             outlier_x = X_train[outlier_indices]
             outlier_y = Y_train[outlier_indices]
 
-            if len(inlier_x) < 30 or len(outlier_x) < 30:
+            if len(inlier_x) < 25 or len(outlier_x) < 25:
                 continue
             inlier_model = cross_val(inlier_x, inlier_y)
             outlier_model = cross_val(outlier_x, outlier_y)
@@ -50,11 +50,18 @@ def main():
                 best_sse = sse
                 best_model_in = inlier_model
                 best_model_out = outlier_model
+                tamanho = len(inlier_x)
             print("a: ", a)
             a += 1
-    print("Best Inlier Threshold:", best_sse)
+    print("Best SSE:", best_sse)
     print("Best Inlier Range:", best_inlier_range)
-
+    print("N inliers", tamanho)
+    print("N inliers", abs(100 - tamanho))
+    col1 = best_model_in.predict(X_test)
+    col2 = best_model_out.predict(X_test)
+    np.save('col1', col1)
+    np.save('col2', col2)
+    np.save('output_tio', np.column_stack((col1, col2)))
 
 def cross_val(X, Y):
     kf = KFold(n_splits=int(0.70 * len(X)))
