@@ -29,7 +29,7 @@ def main():
     best_strategy_overall = ""
     smote_avg = 0
     oversampling_avg=0
-    number_of_runs = 2
+    number_of_runs = 5
 
     for run in range(1, number_of_runs+1):
         best_balanced_acc = {strategy: 0 for strategy in ["smote", "over_sampling", "under_sampling"]}
@@ -122,7 +122,7 @@ def main():
             aux+=1
 
         # Save the figure for the current run
-        plt.savefig(f"Run{run}_RODS_plots.png")
+        plt.savefig(f"Run{run}_plots.png")
         plt.close()  # Close the plot window
 
     for strategy in strategies:
