@@ -5,7 +5,7 @@ from keras.optimizers import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, balanced_accuracy_score
+from sklearn.metrics import f1_score, balanced_accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 from imblearn import under_sampling, over_sampling
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
@@ -19,19 +19,25 @@ def main():
     X_test = np.load('Xtest_Classification1.npy')
 
     X_train_scaled = X_train / 255
-    x_train, x_val, y_train, y_val = train_test_split(X_train_scaled, Y_train, test_size=0.33)
+    x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True)
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True)
 
     best_balanced_acc_overall = 0
     best_strategy_overall = ""
+    smote_avg = 0
+    oversampling_avg=0
+    number_of_runs = 2
 
-    for run in range(1, 3):
+    for run in range(1, number_of_runs+1):
         best_balanced_acc = {strategy: 0 for strategy in ["smote", "over_sampling", "under_sampling"]}
         best_strategy = {strategy: "" for strategy in ["smote", "over_sampling", "under_sampling"]}
 
         strategies = ["smote", "over_sampling", "under_sampling"]
+        fig, axes = plt.subplots(2, 3, figsize=(15, 5))
+        aux=0
         for strategy in strategies:
             model = Sequential()
-            model.add(Dense(8, activation='relu'))
+            model.add(Dense(8, activation='relu', input_dim = 28*28*3))
             model.add(Dense(4, activation='relu'))
             model.add(Dense(1, activation='sigmoid'))
             adam = Adam(learning_rate=lr)
@@ -48,15 +54,19 @@ def main():
                 random_under_sampler = RandomUnderSampler()
                 x_train_reshaped, y_train_reshaped = random_under_sampler.fit_resample(x_train, y_train)
 
+            #print("before reshaping:")
+            #print(f"class 1 tem {sum(y_train)} e class 0 tem {len(y_train)-sum(y_train)}")
+            #print(f"after reshaping {strategy}:")
+            #print(f"class 1 tem {sum(y_train_reshaped)} e class 0 tem {len(y_train_reshaped)-sum(y_train_reshaped)}")
+
             model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
             callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
-            history = model.fit(x_train_reshaped, y_train_reshaped, batch_size=64, epochs=200, validation_data=(x_val, y_val), callbacks=[callback])
+            history = model.fit(x_train_reshaped, y_train_reshaped,verbose=0, batch_size=64, epochs=200, validation_data=(x_val, y_val), callbacks=[callback])
 
-            predict = model.predict(x_train)
-            predict_val = model.predict(x_val)
+            predict = model.predict(x_test)
 
-            f1 = f1_score(y_val, np.round(predict_val))
-            balanced_acc = balanced_accuracy_score(y_val, np.round(predict_val))
+            f1 = f1_score(y_test, np.round(predict))
+            balanced_acc = balanced_accuracy_score(y_test, np.round(predict))
             print(f'Run {run}, Strategy: {strategy}')
             print(f'F1-score: {f1}')
             print(f'Balanced Accuracy: {balanced_acc}\n')
@@ -69,33 +79,26 @@ def main():
                 best_balanced_acc_overall = balanced_acc
                 best_strategy_overall = strategy
 
-        fig, axes = plt.subplots(3, 3, figsize=(30, 15))
+            if strategy == "smote":
+                smote_avg += balanced_acc
 
-        for i, strategy in enumerate(strategies):
-            # Plot the first subplot (Training Loss)
-            axes[0, i].plot(history.history['loss'], label='Training Loss')
-            axes[0, i].plot(history.history['val_loss'], label='Validation Loss')
-            axes[0, i].set_xlabel('Epochs')
-            axes[0, i].set_ylabel('Loss')
-            axes[0, i].set_title(f'Loss / Cost - {strategy}')
-            axes[0, i].legend()
+            elif strategy == "over_sampling":
+                oversampling_avg += balanced_acc
 
-            # Add text to the first subplot
-            axes[0, i].text(0.5, 0.8, f'Balanced Acc: {best_balanced_acc[strategy]:.4f}', transform=axes[0, i].transAxes, fontsize=12)
+            axes[0,aux].plot(history.history['loss'], label='Training Loss')
+            axes[0,aux].plot(history.history['val_loss'], label='Validation Loss')
+            axes[0,aux].set_xlabel('Epochs')
+            axes[0,aux].set_ylabel('Loss')
+            axes[0,aux].set_title(f'Loss / Cost - {strategy}')
+            axes[0,aux].text(0.1, 0.2, f'Balanced Acc: {balanced_acc:.4f}', fontsize=10,transform=axes[1,aux].transAxes)
+            axes[0,aux].text(0.1, 0.15, f'F1 Score: {f1:.4f}', fontsize=10,transform=axes[1,aux].transAxes)
+            axes[0,aux].legend()
 
-        for i in range(3):
-            axes[1, i].scatter(x_train_reshaped[:, 0][y_train_reshaped == 0], x_train_reshaped[:, 1][y_train_reshaped == 0], c='red', label='y=0')
-            axes[1, i].scatter(x_train_reshaped[:, 0][y_train_reshaped == 1], x_train_reshaped[:, 1][y_train_reshaped == 1], c='blue', label='y=1')
-            axes[1, i].set_title(f'{strategies[i]} Reshaped Train Split')
-            axes[1, i].text(0.2, 0.8, f'class 1 has: {sum(y_train_reshaped)} / {len(y_train_reshaped)}', transform=axes[1, i].transAxes, fontsize=12, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
-            axes[1, i].legend()
+            cm = confusion_matrix(y_test, np.round(predict))
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
+            disp.plot(ax=axes[1, aux], values_format='d')
 
-        for i in range(3):
-            axes[2, i].scatter(x_train[:, 0][y_train == 0], x_train[:, 1][y_train == 0], c='red', label='y=0')
-            axes[2, i].scatter(x_train[:, 0][y_train == 1], x_train[:, 1][y_train == 1], c='blue', label='y=1')
-            axes[2, i].set_title(f'Normal Train Split')
-            axes[2, i].text(0.2, 0.8, f'class 1 has: {sum(y_train)} / {len(y_train)}', transform=axes[2, i].transAxes, fontsize=12, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
-            axes[2, i].legend()
+            aux+=1
 
         # Save the figure for the current run
         plt.savefig(f"Run{run}_plots.png")
@@ -105,6 +108,9 @@ def main():
         print(f'Best Balanced Accuracy for {strategy}: {best_balanced_acc[strategy]}')
 
     print(f'\nBest OVERALL Balanced Accuracy: {best_balanced_acc_overall}, Strategy Used: {best_strategy_overall}')
+    print(f"SMOTE AVERAGE {number_of_runs} RUNS BALANCED ACCURACY: ", smote_avg/number_of_runs)
+    print(f"OVERSAMPLING AVERAGE {number_of_runs} RUNS BALANCED ACCURACY: ", oversampling_avg/number_of_runs)
+
 
 if __name__ == "__main__":
     main()
