@@ -20,8 +20,8 @@ def main():
 
     X_train_scaled = X_train / 255
 
-    #X_train_scaled, Y_train = data_augmentation(X_train_scaled, Y_train)
-    
+    X_train_scaled, Y_train = data_augmentation(X_train_scaled, Y_train)
+
     x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True)
 
@@ -43,14 +43,14 @@ def main():
         for strategy in strategies:
             model = Sequential()
             # Convolutional layers
-            model.add(Dense(8, activation='relu'))
-            model.add(Dense(4, activation='relu'))
-            model.add(Dense(1, activation='sigmoid'))
-            """ model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 3)))
+            # model.add(Dense(8, activation='relu'))
+            # model.add(Dense(4, activation='relu'))
+            # model.add(Dense(1, activation='sigmoid'))
+            model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 3)))
             model.add(MaxPooling2D((2, 2)))
-            model.add(Conv2D(64, (3, 3), activation='tanh'))
+            model.add(Conv2D(64, (3, 3), activation='relu'))
             model.add(MaxPooling2D((2, 2)))
-            model.add(Conv2D(128, (3, 3), activation='tanh'))
+            model.add(Conv2D(128, (3, 3), activation='relu'))
 
             # Flatten the output for the fully connected layers
             model.add(Flatten())
@@ -61,12 +61,13 @@ def main():
             model.add(Dense(64, activation='relu'))
 
             # Output layer with sigmoid activation for binary classification
-            model.add(Dense(1, activation='sigmoid')) """
+            model.add(Dense(1, activation='sigmoid'))
             adam = Adam(learning_rate=lr)
 
             if strategy == "smote":
                 smote = SMOTE(sampling_strategy='auto', k_neighbors=5, random_state=42)
                 x_train_reshaped, y_train_reshaped = smote.fit_resample(x_train, y_train)
+                # print(f"smote: {len(y_train)},{len(y_train[y_train==0])}, {len(y_train[y_train==1])}, {len(y_train_reshaped)}, {len(y_train_reshaped[y_train_reshaped==1])}")
 
             elif strategy == "over_sampling":
                 random_over_sampler = RandomOverSampler()
@@ -77,9 +78,9 @@ def main():
                 x_train_reshaped, y_train_reshaped = random_under_sampler.fit_resample(x_train, y_train)
 
             # comment this to use Dense layers    
-            """ x_train_reshaped = x_train_reshaped.reshape(-1, 28, 28, 3)
+            x_train_reshaped = x_train_reshaped.reshape(-1, 28, 28, 3)
             x_val = x_val.reshape(-1, 28, 28, 3)
-            x_test = x_test.reshape(-1,28,28,3) """
+            x_test = x_test.reshape(-1,28,28,3)
             model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
             callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
             history = model.fit(x_train_reshaped, y_train_reshaped,verbose=2, batch_size=64, epochs=50, validation_data=(x_val, y_val), callbacks=[callback])
@@ -121,7 +122,7 @@ def main():
             aux+=1
 
         # Save the figure for the current run
-        plt.savefig(f"Run{run}_2_plots.png")
+        plt.savefig(f"Run{run}_RODS_plots.png")
         plt.close()  # Close the plot window
 
     for strategy in strategies:
