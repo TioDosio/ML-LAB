@@ -19,23 +19,23 @@ def main():
     X_test = np.load('Xtest_Classification1.npy')
 
     X_train_scaled = X_train / 255
+    X_test_scaled = X_test / 255
 
     X_train_scaled, Y_train = data_augmentation(X_train_scaled, Y_train)
 
     x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True)
-
     best_balanced_acc_overall = 0
     best_strategy_overall = ""
     smote_avg = 0
     oversampling_avg=0
-    number_of_runs = 5
+    number_of_runs = 1
 
     for run in range(1, number_of_runs+1):
         best_balanced_acc = {strategy: 0 for strategy in ["smote", "over_sampling", "under_sampling"]}
         best_strategy = {strategy: "" for strategy in ["smote", "over_sampling", "under_sampling"]}
 
-        strategies = ["smote", "over_sampling", "under_sampling"]
+        strategies = ["over_sampling"]
 
 
         fig, axes = plt.subplots(2, 3, figsize=(15, 8))
@@ -81,11 +81,16 @@ def main():
             x_train_reshaped = x_train_reshaped.reshape(-1, 28, 28, 3)
             x_val = x_val.reshape(-1, 28, 28, 3)
             x_test = x_test.reshape(-1,28,28,3)
+            X_test_reshaped = X_test_scaled.reshape(-1,28,28,3)
             model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
             callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
-            history = model.fit(x_train_reshaped, y_train_reshaped,verbose=2, batch_size=64, epochs=50, validation_data=(x_val, y_val), callbacks=[callback])
+            print(f"len xtrain = {len(x_train_reshaped)}")
+            history = model.fit(x_train_reshaped, y_train_reshaped,verbose=2, batch_size=2000, epochs=100, validation_data=(x_val, y_val), callbacks=[callback])
+
 
             predict = model.predict(x_test)
+            predict_final = model.predict(X_test_reshaped)
+            #np.save(f'output_{strategy}', np.round(predict_final))
             print("shape predict", predict.shape)
             f1 = f1_score(y_test, np.round(predict))
             balanced_acc = balanced_accuracy_score(y_test, np.round(predict))
@@ -134,22 +139,32 @@ def main():
 
 
 def data_augmentation(x_train, y_train):
-    x_aug = []
+    x_aug_class1 = []
+    x_aug_class0 = []
+
     
     X_train_class1 = x_train[y_train == 1]
     X_train_class0 = x_train[y_train == 0]
     y_train_class0 = y_train[y_train == 0]
 
-    x_reshaped = np.reshape(X_train_class1, (-1, 28, 28, 3))
+    x_reshaped_class1 = np.reshape(X_train_class1, (-1, 28, 28, 3))
     for i in range(4):
-        x_aug.append(np.rot90(x_reshaped, k=i, axes=(1, 2))) # Rotate 90 degrees
+        x_aug_class1.append(np.rot90(x_reshaped_class1, k=i, axes=(1, 2))) # Rotate 90 degrees
 
-    x_aug = np.concatenate(x_aug, axis=0)  # Concatenate the augmented data along the first axis
-    y_aug = np.tile(y_train[y_train == 1], 4)  # Create corresponding labels for augmented data
-    
-    x_aug = x_aug.reshape(3584, -1)
-    x = np.concatenate((x_aug, X_train_class0), axis=0)
-    y = np.concatenate((y_aug, y_train_class0), axis=0)
+    x_reshaped_class0 = np.reshape(X_train_class0, (-1, 28, 28, 3))
+    for i in range(4):
+        x_aug_class0.append(np.rot90(x_reshaped_class0, k=i, axes=(1, 2))) # Rotate 90 degrees
+
+    x_aug_class0 = np.concatenate(x_aug_class0, axis=0)
+    y_aug_class0 = np.tile(y_train[y_train == 0], 4)
+    x_aug_class1 = np.concatenate(x_aug_class1, axis=0)  # Concatenate the augmented data along the first axis
+    y_aug_class1 = np.tile(y_train[y_train == 1], 4)  # Create corresponding labels for augmented data
+
+
+    x_aug_class1 = x_aug_class1.reshape(3584, -1)
+    x_aug_class0 = x_aug_class0.reshape(21432, -1)
+    x = np.concatenate((x_aug_class1, x_aug_class0), axis=0)
+    y = np.concatenate((y_aug_class1, y_aug_class0), axis=0)
 
     return x, y
 
