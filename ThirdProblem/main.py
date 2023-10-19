@@ -21,10 +21,18 @@ def main():
     X_train_scaled = X_train / 255
     X_test_scaled = X_test / 255
 
-    X_train_scaled, Y_train = data_augmentation(X_train_scaled, Y_train)
-
     x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True)
+    x_test_rotated, y_test_rotated = data_augmentation(x_test, y_test)
+    print("pos 1 aug")
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True)
+    x_val_rotated, y_val_rotated = data_augmentation(x_val, y_val)
+    print("pos 2 aug")
+    x_train, y_train = data_augmentation(x_train, y_train)
+    x_train, y_train = np.concatenate((x_train, x_test_rotated), axis=0), np.concatenate((y_train, y_test_rotated),
+                                                                                         axis=0)
+    x_train, y_train = np.concatenate((x_train, x_val_rotated), axis=0), np.concatenate((y_train, y_val_rotated),
+                                                                                        axis=0)
+
     best_balanced_acc_overall = 0
     best_strategy_overall = ""
     smote_avg = 0
@@ -160,9 +168,8 @@ def data_augmentation(x_train, y_train):
     x_aug_class1 = np.concatenate(x_aug_class1, axis=0)  # Concatenate the augmented data along the first axis
     y_aug_class1 = np.tile(y_train[y_train == 1], 4)  # Create corresponding labels for augmented data
 
-
-    x_aug_class1 = x_aug_class1.reshape(3584, -1)
-    x_aug_class0 = x_aug_class0.reshape(21432, -1)
+    x_aug_class1 = x_aug_class1.reshape(x_aug_class1.shape[0], -1)
+    x_aug_class0 = x_aug_class0.reshape(x_aug_class0.shape[0], -1)
     x = np.concatenate((x_aug_class1, x_aug_class0), axis=0)
     y = np.concatenate((y_aug_class1, y_aug_class0), axis=0)
 
