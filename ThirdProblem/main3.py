@@ -10,6 +10,8 @@ from imblearn import under_sampling, over_sampling
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 import tensorflow as tf
+from sklearn.svm import SVC
+
 
 def main():
     lr = 0.0001  # Learning rate
@@ -22,14 +24,15 @@ def main():
     X_test_scaled = X_test / 255
 
     x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True)
-    x_test_rotated, y_test_rotated = data_augmentation(x_test, y_test)
     print("pos 1 aug")
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True)
     x_val_rotated, y_val_rotated = data_augmentation(x_val, y_val)
     print("pos 2 aug")
-    x_train, y_train = data_augmentation(x_train, y_train)
-    x_train, y_train = np.concatenate((x_train, x_val_rotated), axis=0), np.concatenate((y_train, y_val_rotated),axis=0)
-    x_test, y_test = np.concatenate((x_test, x_test_rotated), axis=0), np.concatenate((y_test, y_test_rotated), axis=0)                                                                          
+    x_train_rotated, y_train_rotated = data_augmentation(x_train, y_train)
+    # juntar train normal com os rotated
+    x_train, y_train = np.concatenate((x_train, x_train_rotated), axis=0), np.concatenate((y_train, y_train_rotated), axis=0)
+    # juntar train+rotated com rotated validation
+    x_train, y_train = np.concatenate((x_train, x_val_rotated), axis=0), np.concatenate((y_train, y_val_rotated), axis=0)
 
     best_balanced_acc_overall = 0
     best_strategy_overall = ""
@@ -134,7 +137,7 @@ def main():
             aux+=1
 
         # Save the figure for the current run
-        plt.savefig(f"Run{run}_main2_plots.png")
+        plt.savefig(f"Run{run}_main3_plots.png")
         plt.close()  # Close the plot window
 
     for strategy in strategies:
@@ -148,7 +151,6 @@ def main():
 def data_augmentation(x_train, y_train):
     x_aug_class1 = []
     x_aug_class0 = []
-
     
     X_train_class1 = x_train[y_train == 1]
     X_train_class0 = x_train[y_train == 0]
