@@ -11,9 +11,8 @@ from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 import tensorflow as tf
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from keras.utils import to_categorical
-
-
 
 def main():
     lr = 0.0001  # Learning rate
@@ -54,9 +53,13 @@ def main():
     model.add(Dense(6, activation='softmax'))
     adam = Adam(learning_rate=lr)
 
+
     fig, axes = plt.subplots(2, figsize=(15, 8))
 
-    x_train_reshaped = x_train.reshape(-1, 28, 28, 3)
+    random_over_sampler = RandomOverSampler()
+    x_train_reshaped, y_train_reshaped = random_over_sampler.fit_resample(x_train, y_train)
+    y_train_reshaped = to_categorical(y_train_reshaped, num_classes=6)
+    x_train_reshaped = x_train_reshaped.reshape(-1, 28, 28, 3)
     x_val = x_val.reshape(-1, 28, 28, 3)
     x_test = x_test.reshape(-1,28,28,3)
     X_test_reshaped = X_test_scaled.reshape(-1,28,28,3)
@@ -64,7 +67,7 @@ def main():
     callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
     print(f"len xtrain = {len(x_train_reshaped)}")
     print(f"len xtest = {len(x_test)}")
-    history = model.fit(x_train_reshaped, y_train_onehot,verbose=2, batch_size=2000, epochs=100, validation_data=(x_val, y_val_onehot), callbacks=[callback])
+    history = model.fit(x_train_reshaped, y_train_reshaped,verbose=2, batch_size=2000, epochs=100, validation_data=(x_val, y_val_onehot), callbacks=[callback])
     predict = model.predict(x_test)
     balanced_accuracy = balanced_accuracy_score(y_test, np.argmax(predict, axis=1))
     #print(f"Balanced Accuracy = {balanced_accuracy}")
