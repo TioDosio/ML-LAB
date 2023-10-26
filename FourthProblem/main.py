@@ -33,10 +33,16 @@ def main():
 
     x_val, y_val = data_augmentation(x_val, y_val)
     x_train, y_train = data_augmentation(x_train, y_train)
+    print()
     for aux in range(0,6):
         print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")
     
-    flipped_class_data = further_data_augmentation(x_train[y_train==2], y_train[y_train==2])
+    x_flipped_data, y_data = further_data_augmentation(x_train[y_train==2], y_train[y_train==2])
+    x_train, y_train = np.concatenate((x_train, x_flipped_data), axis=0), np.concatenate((y_train,y_data), axis=0)
+    
+    print()
+    for aux in range(0,6):
+        print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")
     # juntar train normal com os rotated
     #x_train, y_train = np.concatenate((x_train, x_train_rotated), axis=0), np.concatenate((y_train, y_train_rotated), axis=0)
     #x_val, y_val = np.concatenate((x_train, x_val_rotated), axis=0), np.concatenate((y_train, y_val_rotated), axis=0)
@@ -117,14 +123,17 @@ def data_augmentation(x_train, y_train):
 
 def further_data_augmentation(x_train, y_train):
     print(x_train.shape)
-    flipped_images=[]
-    x_train_reshaped = x_train.reshape(-1, 28, 28, 3)
-    for image in x_train_reshaped:
-        flipped_images.append(np.flipud(image))
-        flipped_images.append(np.fliplr(image))
 
+    flipped_images = []
+    x_train_reshaped = x_train.reshape(-1, 28, 28, 3)
+    flipped_images.append(np.flipud(x_train_reshaped))
+    flipped_images.append(np.fliplr(x_train_reshaped))
+    
+    y_aug = np.tile(y_train[y_train == 2], x_train_reshaped.shape[0]*2)
     flipped = np.concatenate(flipped_images, axis=0)
-    print(flipped.shape)
+    flipped_reshaped = flipped.reshape(flipped.shape[0], -1)
+    print(flipped_reshaped.shape)
+    return flipped_reshaped, y_aug
 
 if __name__ == "__main__":
     main()
