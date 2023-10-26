@@ -44,6 +44,7 @@ def main():
     cm = confusion_matrix(y_test, np.round(svm_predict))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1, 2, 3, 4, 5])
     disp.plot()
+    plt.title(f"Model SVM: Balanced Accuracy = {balanced_acc}")
     plt.show()
 
 if __name__ == "__main__":

@@ -23,13 +23,20 @@ def main():
 
     X_train_scaled = X_train / 255
     X_test_scaled = X_test / 255
+    X_train_scaled = X_train / 255
+    X_test_scaled = X_test / 255
 
     x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True, stratify=Y_train)
+    for aux in range(0,6):
+        print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True, stratify=y_train)
 
     x_val, y_val = data_augmentation(x_val, y_val)
     x_train, y_train = data_augmentation(x_train, y_train)
-
+    for aux in range(0,6):
+        print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")
+    
+    flipped_class_data = further_data_augmentation(x_train[y_train==2], y_train[y_train==2])
     # juntar train normal com os rotated
     #x_train, y_train = np.concatenate((x_train, x_train_rotated), axis=0), np.concatenate((y_train, y_train_rotated), axis=0)
     #x_val, y_val = np.concatenate((x_train, x_val_rotated), axis=0), np.concatenate((y_train, y_val_rotated), axis=0)
@@ -43,11 +50,12 @@ def main():
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(MaxPooling2D((2, 2)))
     model.add(Conv2D(128, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
 
     model.add(Flatten())
 
     model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))  
+    model.add(Dropout(0.5))   # mais camadas de droupout com valores mais baixos
     model.add(Dense(64, activation='relu'))
 
     model.add(Dense(6, activation='softmax'))
@@ -86,7 +94,6 @@ def main():
     plt.show()
 
 def data_augmentation(x_train, y_train):
-    
     x = x_train.copy()
     y = y_train.copy()
 
@@ -107,6 +114,17 @@ def data_augmentation(x_train, y_train):
         y = np.concatenate((y, y_aug), axis=0)
 
     return x, y
+
+def further_data_augmentation(x_train, y_train):
+    print(x_train.shape)
+    flipped_images=[]
+    x_train_reshaped = x_train.reshape(-1, 28, 28, 3)
+    for image in x_train_reshaped:
+        flipped_images.append(np.flipud(image))
+        flipped_images.append(np.fliplr(image))
+
+    flipped = np.concatenate(flipped_images, axis=0)
+    print(flipped.shape)
 
 if __name__ == "__main__":
     main()
