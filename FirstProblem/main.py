@@ -1,141 +1,200 @@
-import keras
-from keras.models import Sequential
-from keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
-from keras.optimizers import Adam
 import numpy as np
+from sklearn.linear_model import Ridge, Lasso
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, balanced_accuracy_score, confusion_matrix, ConfusionMatrixDisplay
-from imblearn import under_sampling, over_sampling
-from imblearn.over_sampling import SMOTE, RandomOverSampler
-from imblearn.under_sampling import RandomUnderSampler
-import tensorflow as tf
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from keras.utils import to_categorical
+import warnings
+from sklearn.model_selection import KFold
+
+# Load the data from .npy files
+global X_train
+global Y_train
+global X_test
+global ridge_parameter
+global lasso_parameter
+
+
+X_train = np.load('X_train_regression1.npy')
+Y_train = np.load('y_train_regression1.npy')
+X_test = np.load('X_test_regression1.npy')
+fold_num = 9  # number of splits for cross-validation
+ridge_parameter = 2.7
+lasso_parameter = 0.1
 
 
 def main():
-    lr = 0.0001  # Learning rate
+    warnings.filterwarnings("ignore")
+    """
+    Plots the SSE results using a range of different alpha parameters for Lasso and Ridge regression, without feature removal
+    """
+    kf = KFold(n_splits=fold_num)
+    linear_SSE = []
+    alphas = np.arange(0.1, 5, 0.1)  # range of alphas to analyse
+    ridge_SSE_alphas = [0]*(len(alphas))
+    lasso_SSE_alphas = [0]*(len(alphas))
 
-    X_train = np.load('/content/drive/MyDrive/Colab Notebooks/Xtrain_Classification2.npy')
-    Y_train = np.load('/content/drive/MyDrive/Colab Notebooks/ytrain_Classification2.npy')
-    X_test = np.load('/content/drive/MyDrive/Colab Notebooks/Xtest_Classification2.npy')
+    sse_ridge_test = []
+    sse_lasso_test = []
+    linear_SSE = []
+    modified_sse_ridge = []
+    best_features = [0]*X_train.shape[1]
 
-    X_train_scaled = X_train / 255
-    X_test_scaled = X_test / 255
-    X_train_scaled = X_train / 255
-    X_test_scaled = X_test / 255
+    # cross validation
+    for trainID, testID in kf.split(X_train):
+        aux_alphas = 0
+        Xtrain_fold = X_train[trainID]
+        Ytrain_fold = Y_train[trainID]
+        Xtest_fold = X_train[testID]
+        Ytest_fold = Y_train[testID]
 
-    x_train, x_test, y_train, y_test = train_test_split(X_train_scaled, Y_train, test_size=0.33, shuffle=True,
-                                                        stratify=Y_train)
-    """for aux in range(0,6):
-        print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")"""
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.33, shuffle=True, stratify=y_train)
+        # LASSO AND RIDGE WITH BEST ALPHA COEFFICIENT
+        lasso_model_test = Lasso(alpha=lasso_parameter)
+        lasso_model_test.fit(Xtrain_fold, Ytrain_fold)
+        lasso_model_test_predict = lasso_model_test.predict(Xtest_fold)
+        sse_lasso_test.append(calculate_SSE(
+            Ytest_fold, lasso_model_test_predict))
 
-    x_val, y_val = data_augmentation(x_val, y_val)
-    x_train, y_train = data_augmentation(x_train, y_train)
-    print()
-    """for aux in range(0,6):
-        print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")"""
+        ridge_model_test = Ridge(alpha=ridge_parameter)
+        ridge_model_test.fit(Xtrain_fold, Ytrain_fold)
+        ridge_model_test_predict = ridge_model_test.predict(Xtest_fold)
+        sse_ridge_test.append(calculate_SSE(
+            Ytest_fold, ridge_model_test_predict))
 
-    x_flipped_data, y_data = further_data_augmentation(x_train[y_train == 2], y_train[y_train == 2])
-    x_train, y_train = np.concatenate((x_train, x_flipped_data), axis=0), np.concatenate((y_train, y_data), axis=0)
+        # RIDGE FEATURE REMOVAL
+        best_feature_idx = -1
+        for feature_idx in range(Xtrain_fold.shape[1]):
+            # Create a modified Xtrain dataset with the current feature removed
+            modified_data = np.delete(Xtrain_fold, feature_idx, axis=1)
+            modified_testdata = np.delete(Xtest_fold, feature_idx, axis=1)
 
-    """for aux in range(0,6):
-        print(f"tamanho class {aux} = {len(y_train[y_train==aux])}")"""
-    """juntar train normal com os rotated
-    x_train, y_train = np.concatenate((x_train, x_train_rotated), axis=0), np.concatenate((y_train, y_train_rotated), axis=0)
-    x_val, y_val = np.concatenate((x_train, x_val_rotated), axis=0), np.concatenate((y_train, y_val_rotated), axis=0)"""
+            baseline_SSE = calculate_SSE(Ytest_fold, ridge_model_test_predict)
+            ridge_model_test_fm = Ridge(alpha=ridge_parameter)
+            ridge_model_test_fm.fit(modified_data, Ytrain_fold)
+            ridge_model_test_predict_modified = ridge_model_test_fm.predict(
+                modified_testdata)
+            modified_sse = calculate_SSE(
+                Ytest_fold, ridge_model_test_predict_modified)
+            if modified_sse < baseline_SSE:  # Compare SSE with baseline
+                #print(f"Removing feature {feature_idx} improved SSE: {modified_sse}")
+                baseline_SSE = modified_sse
+                best_feature_idx = feature_idx
 
-    y_train_onehot = to_categorical(y_train, num_classes=6)
-    y_val_onehot = to_categorical(y_val, num_classes=6)
+        if best_feature_idx is not None:
+            print(f"Best feature to remove: {best_feature_idx} ")
+            best_features[best_feature_idx] += 1
+        else:
+            print("No improvement found.")
 
-    model = Sequential()
-    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 3)))
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Conv2D(128, (3, 3), activation='relu'))
-    model.add(MaxPooling2D((2, 2)))
+        # remove features and re-train the model
+        Xtrain_removed = np.delete(Xtrain_fold, 7, axis=1)
+        Xtest_removed = np.delete(Xtest_fold, 7, axis=1)
+        ridge_model_test_fm.fit(Xtrain_removed, Ytrain_fold)
+        ridge_model_test_predict_removed = ridge_model_test_fm.predict(
+            Xtest_removed)
+        modified_sse_ridge.append(calculate_SSE(
+            Ytest_fold, ridge_model_test_predict_removed))
 
-    model.add(Flatten())
+        linear_SSE.append(linear_model(
+            Xtrain_fold, Ytrain_fold, Xtest_fold, Ytest_fold))
 
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.3))  # mais camadas de droupout com valores mais baixos
-    model.add(Dropout(0.2))
-    model.add(Dense(64, activation='relu'))
+        # see how the alphas change the SSE to find the ideal value for our data
+        for a in alphas:
+            ridge_model = Ridge(alpha=a)
+            ridge_model.fit(Xtrain_fold, Ytrain_fold)
+            ridge_model_predict = ridge_model.predict(Xtest_fold)
+            ridge_SSE_alphas[aux_alphas] += (
+                calculate_SSE(Ytest_fold, ridge_model_predict))
 
-    model.add(Dense(6, activation='softmax'))
-    adam = Adam(learning_rate=lr)
+            lasso_model = Lasso(alpha=a)
+            lasso_model.fit(Xtrain_fold, Ytrain_fold)
+            lasso_model_predict = lasso_model.predict(Xtest_fold)
+            lasso_SSE_alphas[aux_alphas] += (
+                calculate_SSE(Ytest_fold, lasso_model_predict))
+            aux_alphas += 1
 
-    fig, axes = plt.subplots(2, figsize=(15, 8))
+    print(f"[Ridge] SSE mean of folds = {np.mean(sse_ridge_test):.3f}")
+    print(f"[Lasso] SSE mean of folds = {np.mean(sse_lasso_test):.3f}")
 
-    random_over_sampler = RandomOverSampler()
-    x_train_reshaped, y_train_reshaped = random_over_sampler.fit_resample(x_train, y_train)
-    y_train_reshaped = to_categorical(y_train_reshaped, num_classes=6)
-    x_train_reshaped = x_train_reshaped.reshape(-1, 28, 28, 3)
-    x_val = x_val.reshape(-1, 28, 28, 3)
-    x_test = x_test.reshape(-1, 28, 28, 3)
-    X_test_reshaped = X_test_scaled.reshape(-1, 28, 28, 3)
-    model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
-    callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
-    print(f"len xtrain = {len(x_train_reshaped)}")
-    print(f"len xtest = {len(x_test)}")
-    history = model.fit(x_train_reshaped, y_train_reshaped, verbose=2, batch_size=2000, epochs=100,
-                        validation_data=(x_val, y_val_onehot), callbacks=[callback])
-    predict = model.predict(x_test)
-    balanced_accuracy = balanced_accuracy_score(y_test, np.argmax(predict, axis=1))
-    # print(f"Balanced Accuracy = {balanced_accuracy}")
+    print(
+        f"[Ridge] SSE mean of folds removing feature = {np.mean(modified_sse_ridge):.3f}")
+    print(
+        f"Linear Regression Cross-Validation SSE = {np.mean(linear_SSE):.3f}")
+    feature = np.argmax(best_features)
+    save_files(feature, X_train, Y_train, X_test)
 
-    axes[0].plot(history.history['loss'], label='Training Loss')
-    axes[0].plot(history.history['val_loss'], label='Validation Loss')
-    axes[0].set_xlabel('Epochs')
-    axes[0].set_ylabel('Loss')
-    axes[0].set_title(f'Balanced Acc:{balanced_accuracy:.4f}')
-    # axes[0].text(0.1, 0.15, f'F1 Score: {f1:.4f}', fontsize=10,transform=axes[1,aux].transAxes)
-    axes[0].legend()
+    plots(alphas, ridge_SSE_alphas, lasso_SSE_alphas)
 
-    cm = confusion_matrix(y_test, np.argmax(predict, axis=1))
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1, 2, 3, 4, 5])
-    disp.plot(ax=axes[1], values_format='d')
+
+def save_files(feature, X_train, Y_train, X_test):
+    # normal ridge progression using alpha = 2.4
+    ridge_final = Ridge(alpha=ridge_parameter)
+    ridge_final.fit(X_train, Y_train)
+    ridge_final_predict = ridge_final.predict(X_test)
+    np.save('ridge-output', ridge_final_predict)
+
+    # removing feature:
+    X_train = np.delete(X_train, 7, axis=1)
+    X_test = np.delete(X_test, 7, axis=1)
+
+    ridge_final_fr = Ridge(alpha=ridge_parameter)
+    ridge_final_fr.fit(X_train, Y_train)
+    ridge_final_predict_fr = ridge_final_fr.predict(X_test)
+    np.save('ridge-output-fr', ridge_final_predict_fr)
+
+
+def calculate_SSE(y, y_predicted):
+    """
+    Calculates the Sum of Squared Errors (SSE)
+    :y: observed y values
+    :y_predicted: predicted y values
+
+    :return: SSE
+    """
+    return np.sum((y-y_predicted)**2)
+
+
+def linear_model(X_train, Y_train, X_test, Y_test):
+    """ridge_model_predict
+    Simple linear model for comparison purposes
+    :X_train: X train values
+    :Y_train: Y train values
+    :X_test: X test values
+    :Y_test: Y test values
+
+    :return: SSE of linear model
+    """
+    ones_column = np.ones((X_train.shape[0], 1))
+    X_design = np.hstack((ones_column, X_train))
+    aux1 = X_design.transpose()@X_design
+    aux2 = X_design.transpose()@Y_train
+    beta = np.linalg.inv(aux1)@aux2
+    Ytest_predicted = beta[0] + X_test@beta[1:]
+    return calculate_SSE(Y_test, Ytest_predicted)
+
+
+def plots(alphas, ridge_SSE_alphas, lasso_SSE_alphas):
+    """function that plots the relation between the alphas and SSE for both Ridge and Lasso models
+    """
+    ridge_SSE_plot = np.array(ridge_SSE_alphas)/fold_num
+    lasso_SSE_plot = np.array(lasso_SSE_alphas)/fold_num
+    plt.plot(alphas, ridge_SSE_plot, color='red', label="Ridge regression")
+    plt.plot(alphas, lasso_SSE_plot, color='blue', label="Lasso regression")
+
+    min_y_ridge = min(ridge_SSE_plot)
+    min_x_ridge = alphas[np.argmin(ridge_SSE_plot)]
+
+    min_y_lasso = min(lasso_SSE_plot)
+    min_x_lasso = alphas[np.argmin(lasso_SSE_plot)]
+
+    plt.scatter(min_x_ridge, min_y_ridge, color='red',
+                label=f'Minimum (Alpha={min_x_ridge:.2f}, SSE={min_y_ridge:.2f})', zorder=5)
+    plt.scatter(min_x_lasso, min_y_lasso, color='blue',
+                label=f'Minimum (Alpha={min_x_lasso:.2f}, SSE={min_y_lasso:.2f})', zorder=5)
+
+    plt.xlabel("Alpha")
+    plt.ylabel("SSE")
+    plt.legend()
+    plt.grid()
+    plt.title(f"Number of folds = {fold_num}")
     plt.show()
-
-
-def data_augmentation(x_train, y_train):
-    x = x_train.copy()
-    y = y_train.copy()
-
-    for j in range(6):
-        X_train_classj = x_train[y_train == j]
-        x_reshaped_classj = np.reshape(X_train_classj, (-1, 28, 28, 3))
-        x_aug = []
-
-        for i in range(4):
-            x_aug.append(np.rot90(x_reshaped_classj, k=i, axes=(1, 2)))  # Rotate 90 degrees
-
-        x_aug = np.concatenate(x_aug, axis=0)
-        y_aug = np.tile(y_train[y_train == j], 4)
-
-        x_aug_classj = x_aug.reshape(x_aug.shape[0], -1)
-        x = np.concatenate((x, x_aug_classj), axis=0)
-        y = np.concatenate((y, y_aug), axis=0)
-
-    return x, y
-
-
-def further_data_augmentation(x_train, y_train):
-    print(x_train.shape)
-
-    flipped_images = []
-    x_train_reshaped = x_train.reshape(-1, 28, 28, 3)
-    flipped_images.append(np.flipud(x_train_reshaped))
-    flipped_images.append(np.fliplr(x_train_reshaped))
-    y_aug = np.tile(y_train[y_train == 2], 2)
-    flipped = np.concatenate(flipped_images, axis=0)
-    flipped_reshaped = flipped.reshape(flipped.shape[0], -1)
-
-    return flipped_reshaped, y_aug
 
 
 if __name__ == "__main__":
