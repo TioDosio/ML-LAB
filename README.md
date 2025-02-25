@@ -5,13 +5,13 @@ Contents
 
 ### This repository includes the following:
 
-Regression Exercises:
+#### Regression Exercises:
 
 Exercise 1
 
 Exercise 2
 
-Classification Exercises:
+#### Classification Exercises:
 
 Exercise 3
 
