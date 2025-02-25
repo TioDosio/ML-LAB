@@ -5,24 +5,24 @@ Contents
 
 ### This repository includes the following:
 
-    Classification Exercises:
+Regression Exercises:
 
-        Exercise 1: [Brief description of the first classification exercise, e.g., "Binary classification using logistic regression."]
+Exercise 1
 
-        Exercise 2: [Brief description of the second classification exercise, e.g., "Multi-class classification using decision trees."]
+Exercise 2
 
-    Regression Exercises:
+Classification Exercises:
 
-        Exercise 1: [Brief description of the first regression exercise, e.g., "Linear regression for predicting housing prices."]
+Exercise 3
 
-        Exercise 2: [Brief description of the second regression exercise, e.g., "Polynomial regression for modeling complex relationships."]
+Exercise 4
 
 ## Purpose
 
 ### The goal of this repository is to:
 
-    Provide a centralized location for storing and sharing laboratory code.
+Provide a centralized location for storing and sharing laboratory code.
 
-    Facilitate collaboration and learning by sharing insights and methodologies.
+Facilitate collaboration and learning by sharing insights and methodologies.
 
-    Serve as a reference for future projects or studies in machine learning.
+Serve as a reference for future projects or studies in machine learning.
